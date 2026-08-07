@@ -12,18 +12,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'GET' || $_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Clear session data
-    $_SESSION['loggedin'] = false;
-    $_SESSION['user'] = [];
-    session_destroy();
-
-    http_response_code(200);
-    echo json_encode([
-        'success' => true,
-        'message' => 'Logged out successfully',
-        'redirect' => '../login/'
-    ]);
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
+        http_response_code(200);
+        echo json_encode([
+            'success' => true,
+            'loggedin' => true,
+            'user' => $_SESSION['user']
+        ]);
+    } else {
+        http_response_code(401);
+        echo json_encode([
+            'success' => false,
+            'loggedin' => false,
+            'message' => 'User not logged in'
+        ]);
+    }
     exit;
 }
 
