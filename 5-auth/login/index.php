@@ -1,12 +1,23 @@
 <?php
 session_start();
 
-if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
-    if ($_SESSION['user']['role'] === 'admin') {
-        header('Location: ../admin/');
+// Enable CORS for frontend integration
+header(‘Access-Control-Allow-Origin: *’);
+header(‘Access-Control-Allow-Methods: GET, POST, OPTIONS’);
+header(‘Access-Control-Allow-Headers: Content-Type, X-Requested-With’);
+
+if ($_SERVER[‘REQUEST_METHOD’] === ‘OPTIONS’) {
+    http_response_code(200);
+    exit;
+}
+
+// Check if user is already logged in (for page loads, not API calls)
+if (!isset($_SERVER[‘HTTP_X_REQUESTED_WITH’]) && isset($_SESSION[‘loggedin’]) && $_SESSION[‘loggedin’] === true) {
+    if ($_SESSION[‘user’][‘role’] === ‘admin’) {
+        header(‘Location: ../admin/’);
         exit;
-    } elseif ($_SESSION['user']['role'] === 'user') {
-        header('Location: ../');
+    } elseif ($_SESSION[‘user’][‘role’] === ‘user’) {
+        header(‘Location: ../’);
         exit;
     } else {
         exit("Bunday role mavjud emas!");
@@ -16,58 +27,78 @@ if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
 include "../config.php";
 $db = new Database();
 
-if ($_SERVER['REQUEST_METHOD'] === "POST") {
-    header('Content-Type: application/json');
+if ($_SERVER[‘REQUEST_METHOD’] === "POST") {
+    header(‘Content-Type: application/json’);
 
-    $username = strtolower(trim($_POST['username'] ?? ''));
-    $password = $_POST['password'] ?? '';
+    // Handle both form data and JSON input
+    $input = $_POST;
+    if (empty($_POST) && $_SERVER[‘CONTENT_TYPE’] === ‘application/json’) {
+        $input = json_decode(file_get_contents(‘php://input’), true) ?? [];
+    }
+
+    $username = strtolower(trim($input[‘username’] ?? ‘’));
+    $password = $input[‘password’] ?? ‘’;
 
     if (empty(trim($username)) || empty(trim($password))) {
+        http_response_code(400);
         echo json_encode([
-            'success' => false,
-            'title' => '⚠️ Diqqat!',
-            'message' => "Iltimos, login va parol maydonlarini to‘ldiring!"
+            ‘success’ => false,
+            ‘error’ => ‘MISSING_CREDENTIALS’,
+            ‘title’ => ‘⚠️ Diqqat!’,
+            ‘message’ => "Iltimos, login va parol maydonlarini to’ldiring!"
         ]);
         exit;
     }
 
-    $user = $db->select('users', '*', 'username = ?', [$username], 's');
+    $user = $db->select(‘users’, ‘*’, ‘username = ?’, [$username], ‘s’);
 
     if ($user && isset($user[0])) {
-        $id = $user[0]['id'];
-        $name = $user[0]['name'];
-        $role = $user[0]['role'];
-        $hashedPassword = $user[0]['password'];
+        $id = $user[0][‘id’];
+        $name = $user[0][‘name’];
+        $role = $user[0][‘role’];
+        $hashedPassword = $user[0][‘password’];
 
         if (password_verify($password, $hashedPassword)) {
-            $_SESSION['loggedin'] = true;
-            $_SESSION['user'] = [
-                'id' => $id,
-                'name' => $name,
-                'username' => $username,
-                'role' => $role,
+            $_SESSION[‘loggedin’] = true;
+            $_SESSION[‘user’] = [
+                ‘id’ => $id,
+                ‘name’ => $name,
+                ‘username’ => $username,
+                ‘role’ => $role,
             ];
 
+            http_response_code(200);
             echo json_encode([
-                'success' => true,
-                'title' => '✅ Muvaffaqiyat!',
-                'message' => 'Tizimga kirdingiz!',
-                'redirect' => $role === 'admin' ? '../admin/' : '../'
+                ‘success’ => true,
+                ‘token’ => session_id(),
+                ‘user’ => [
+                    ‘id’ => $id,
+                    ‘name’ => $name,
+                    ‘username’ => $username,
+                    ‘role’ => $role
+                ],
+                ‘title’ => ‘✅ Muvaffaqiyat!’,
+                ‘message’ => ‘Tizimga kirdingiz!’,
+                ‘redirect’ => $role === ‘admin’ ? ‘../admin/’ : ‘../’
             ]);
             exit;
         } else {
+            http_response_code(401);
             echo json_encode([
-                'success' => false,
-                'title' => '❌ Xato parol!',
-                'message' => 'Noto‘g‘ri parol, qayta urinib ko‘ring.'
+                ‘success’ => false,
+                ‘error’ => ‘INVALID_PASSWORD’,
+                ‘title’ => ‘❌ Xato parol!’,
+                ‘message’ => ‘Noto’g’ri parol, qayta urinib ko’ring.’
             ]);
             exit;
         }
     } else {
+        http_response_code(404);
         echo json_encode([
-            'success' => false,
-            'title' => '❌ Foydalanuvchi topilmadi!',
-            'message' => "Bunday foydalanuvchi topilmadi."
+            ‘success’ => false,
+            ‘error’ => ‘USER_NOT_FOUND’,
+            ‘title’ => ‘❌ Foydalanuvchi topilmadi!’,
+            ‘message’ => "Bunday foydalanuvchi topilmadi."
         ]);
         exit;
     }
