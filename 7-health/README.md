@@ -2,6 +2,8 @@
 
 A simple PHP health check endpoint that returns the health status of the backend service.
 
+**Part of DUAL-30: Create health status monitoring full-stack application**
+
 ## Features
 
 - Returns JSON-formatted health status
@@ -9,6 +11,7 @@ A simple PHP health check endpoint that returns the health status of the backend
 - Server timestamp and PHP version information
 - CORS enabled for frontend communication
 - Simple and lightweight implementation
+- Comprehensive unit tests
 
 ## Endpoint
 
