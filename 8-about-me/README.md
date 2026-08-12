@@ -47,6 +47,8 @@ GET /about-me
 - **about-me.php**: Main endpoint implementation
 - **config.php**: Configuration and utility classes
 - **test_about_me.php**: Unit tests for the endpoint
+- **cookie-consent.php**: Cookie consent policy and preference management endpoint
+- **test_cookie_consent.php**: Unit tests for the cookie-consent endpoint (added for DUAL-55)
 - **README.md**: This file
 
 ## Usage
@@ -112,4 +114,83 @@ The endpoint includes try-catch error handling that returns a 500 error with det
   "error": "Error details here",
   "timestamp": "2024-08-07 12:14:00"
 }
+```
+
+## Cookie Consent Endpoint (DUAL-55)
+
+The `cookie-consent.php` endpoint manages cookie preferences and policy information. This endpoint supports the cookie notification feature on the about page.
+
+### URL
+```
+GET /cookie-consent    # Get cookie policy information
+POST /cookie-consent   # Save user cookie preferences
+```
+
+### GET Response Format
+```json
+{
+  "status": "success",
+  "timestamp": "2024-08-07 12:14:00",
+  "cookiePolicy": {
+    "essential": {
+      "name": "Essential Cookies",
+      "required": true,
+      "description": "Required for basic functionality and security",
+      "purpose": ["Session management", "Security", "Basic site functionality"]
+    },
+    "performance": {
+      "name": "Performance Cookies",
+      "required": false,
+      "description": "Help us understand how you use our site",
+      "purpose": ["Usage analytics", "Performance monitoring", "Error tracking"]
+    },
+    "preferences": {
+      "name": "Preference Cookies",
+      "required": false,
+      "description": "Remember your choices and settings",
+      "purpose": ["User preferences", "Language settings", "Theme preferences"]
+    }
+  },
+  "privacyPolicyUrl": "/privacy",
+  "termsUrl": "/terms",
+  "contactEmail": "privacy@example.com",
+  "lastUpdated": "2025-01-01"
+}
+```
+
+### POST Request Format
+```json
+{
+  "essential": true,
+  "performance": true,
+  "preferences": false
+}
+```
+
+### POST Response Format
+```json
+{
+  "status": "success",
+  "message": "Cookie preferences saved successfully",
+  "timestamp": "2024-08-07 12:14:00",
+  "saved_preferences": {
+    "essential": true,
+    "performance": true,
+    "preferences": false,
+    "timestamp": "2024-08-07 12:14:00"
+  },
+  "nextReviewDate": "2025-08-07 12:14:00"
+}
+```
+
+### Testing Cookie Consent
+To run the cookie consent endpoint tests:
+
+```bash
+php test_cookie_consent.php
+```
+
+Or access via URL:
+```bash
+curl http://localhost/cookie-consent
 ```
