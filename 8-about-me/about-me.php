@@ -24,24 +24,49 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 /**
  * About Me Endpoint
  *
- * Returns information about the backend service
+ * Returns detailed information about the platform and its features
+ * This endpoint requires user authentication
  */
 
 try {
-    $serverTime = date('Y-m-d H:i:s');
+    require_once 'config.php';
 
+    $aboutMe = new AboutMe();
+    $serverTime = $aboutMe->getTimestamp();
+
+    // Build detailed response
     $response = [
         'status' => 'success',
-        'message' => 'This is a sample site',
-        'timestamp' => $serverTime
+        'message' => $aboutMe->getMessage(),
+        'timestamp' => $serverTime,
+        'platform' => [
+            'name' => 'Sample Platform',
+            'version' => ENDPOINT_VERSION,
+            'service' => ENDPOINT_NAME,
+            'operational' => $aboutMe->isOperational(),
+            'responseTime' => $aboutMe->getResponseTime()
+        ],
+        'features' => [
+            'authentication' => true,
+            'cookie_consent' => true,
+            'responsive_design' => true,
+            'session_management' => true,
+            'user_profiles' => true
+        ],
+        'cookie_policy' => [
+            'essential' => true,
+            'performance' => true,
+            'preferences' => true,
+            'description' => 'We use cookies to improve your experience and remember your preferences'
+        ]
     ];
 
     http_response_code(200);
-    echo json_encode($response, JSON_PRETTY_PRINT);
+    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 } catch (Exception $e) {
     $response = [
         'status' => 'error',
-        'message' => 'An error occurred',
+        'message' => 'An error occurred while retrieving about information',
         'error' => $e->getMessage(),
         'timestamp' => date('Y-m-d H:i:s')
     ];
