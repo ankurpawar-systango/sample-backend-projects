@@ -19,6 +19,11 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 
+// DL-5: Start session for persistent consent storage
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 // Valid cookie categories
 define('COOKIE_CATEGORIES', ['essential', 'performance', 'preferences']);
 
@@ -124,18 +129,17 @@ function handleGetRequest() {
 /**
  * Handle GET request for current consent state
  * This endpoint can be used for server-side validation
+ *
+ * DL-5: Reads from persistent session storage
  */
 function handleGetConsentState() {
-    // In a real application, this would read from a database or session
-    // For now, we return the default state
+    // Retrieve consent state from PHP session (persistent storage)
+    $consentState = getConsentStateFromSession();
+
     $response = [
         'status' => 'success',
         'timestamp' => date('Y-m-d H:i:s'),
-        'consentState' => [
-            'essential' => true,
-            'performance' => false,
-            'preferences' => false
-        ],
+        'consentState' => $consentState,
         'message' => 'Current consent state retrieved successfully'
     ];
 
@@ -179,10 +183,11 @@ function handlePostRequest() {
 /**
  * Validate if a cookie operation is allowed based on user's consent level
  * Returns 403 if consent not given for the requested category
+ *
+ * DL-5: Now checks against persistent server-side consent state
  */
 function handleValidateConsent($data) {
     $consentLevel = isset($data['consent_level']) ? $data['consent_level'] : null;
-    $currentConsent = isset($data['current_consent']) ? $data['current_consent'] : null;
 
     // Validate required fields
     if (!$consentLevel) {
@@ -219,11 +224,11 @@ function handleValidateConsent($data) {
         exit();
     }
 
+    // Get the server-side persisted consent state
+    $persistedConsent = getConsentStateFromSession();
+
     // Check if user has given consent for the requested category
-    $hasConsent = false;
-    if ($currentConsent && isset($currentConsent[$consentLevel])) {
-        $hasConsent = (bool)$currentConsent[$consentLevel];
-    }
+    $hasConsent = isset($persistedConsent[$consentLevel]) && (bool)$persistedConsent[$consentLevel];
 
     if (!$hasConsent) {
         // User has not given consent for this category
@@ -252,6 +257,8 @@ function handleValidateConsent($data) {
 
 /**
  * Save cookie preferences
+ *
+ * DL-5: Now persists consent state to server-side session storage
  */
 function handleSavePreferences($data) {
     // Extract preferences
@@ -263,8 +270,8 @@ function handleSavePreferences($data) {
         'userAgent' => $_SERVER['HTTP_USER_AGENT'] ?? null
     ];
 
-    // In a real application, you would save these to a database or file
-    // For now, we'll just return confirmation
+    // DL-5: Persist consent state to PHP session for server-side validation
+    saveConsentStateToSession($preferences);
 
     $response = [
         'status' => 'success',
@@ -272,9 +279,54 @@ function handleSavePreferences($data) {
         'timestamp' => date('Y-m-d H:i:s'),
         'saved_preferences' => $preferences,
         'nextReviewDate' => date('Y-m-d H:i:s', strtotime('+1 year')),
-        'segregationEnforced' => true
+        'segregationEnforced' => true,
+        'persistedToServer' => true
     ];
 
     http_response_code(200);
     echo json_encode($response, JSON_PRETTY_PRINT);
+}
+
+/**
+ * DL-5: Get consent state from persistent session storage
+ * @return array Consent state with essential, performance, preferences flags
+ */
+function getConsentStateFromSession() {
+    // Check if consent state exists in session
+    if (isset($_SESSION['cookie_consent'])) {
+        return [
+            'essential' => $_SESSION['cookie_consent']['essential'] ?? true,
+            'performance' => $_SESSION['cookie_consent']['performance'] ?? false,
+            'preferences' => $_SESSION['cookie_consent']['preferences'] ?? false
+        ];
+    }
+
+    // Default: only essential cookies allowed
+    return [
+        'essential' => true,
+        'performance' => false,
+        'preferences' => false
+    ];
+}
+
+/**
+ * DL-5: Save consent state to persistent session storage
+ * @param array $consentData Array with essential, performance, preferences keys
+ */
+function saveConsentStateToSession($consentData) {
+    // Validate input
+    if (!is_array($consentData)) {
+        return false;
+    }
+
+    // Store in session with timestamp
+    $_SESSION['cookie_consent'] = [
+        'essential' => $consentData['essential'] ?? true,
+        'performance' => $consentData['performance'] ?? false,
+        'preferences' => $consentData['preferences'] ?? false,
+        'saved_at' => date('Y-m-d H:i:s'),
+        'user_agent' => $consentData['userAgent'] ?? $_SERVER['HTTP_USER_AGENT'] ?? null
+    ];
+
+    return true;
 }
