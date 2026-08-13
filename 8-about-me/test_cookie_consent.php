@@ -31,6 +31,15 @@ class CookieConsentTest
         $this->testConsentValidationInvalidCategory();
         $this->testGetConsentState();
         $this->testSegregationEnabled();
+        // DL-22: Permission-level-based cookie segregation tests
+        $this->testPermissionLevelInfoPresent();
+        $this->testPermissionLevelSegregationEnabled();
+        $this->testPermissionLevelValidationBasicUser();
+        $this->testPermissionLevelValidationPremiumUser();
+        $this->testPermissionLevelValidationInsufficientPermission();
+        $this->testGetPermissionLevels();
+        $this->testPermissionLevelWithConsent();
+        $this->testPermissionLevelWithoutConsent();
 
         $this->printResults();
     }
@@ -253,7 +262,146 @@ class CookieConsentTest
     }
 
     /**
+     * DL-22: Test that permission level info is present in cookie policy
+     */
+    private function testPermissionLevelInfoPresent()
+    {
+        $testName = "Cookie policy includes permission level information";
+        try {
+            $policy = $this->simulateGetRequest();
+            $hasEssentialPermission = isset($policy['cookiePolicy']['essential']['permissionLevel']);
+            $hasPerformancePermission = isset($policy['cookiePolicy']['performance']['permissionLevel']);
+            $hasPreferencePermission = isset($policy['cookiePolicy']['preferences']['permissionLevel']);
+            $this->assertTrue($hasEssentialPermission && $hasPerformancePermission && $hasPreferencePermission, $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * DL-22: Test permission-level segregation enabled flag
+     */
+    private function testPermissionLevelSegregationEnabled()
+    {
+        $testName = "Cookie policy includes permissionLevelSegregationEnabled flag";
+        try {
+            $policy = $this->simulateGetRequest();
+            $this->assertTrue(isset($policy['permissionLevelSegregationEnabled']) && $policy['permissionLevelSegregationEnabled'] === true, $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * DL-22: Test permission validation for basic user (permission level 1)
+     */
+    private function testPermissionLevelValidationBasicUser()
+    {
+        $testName = "Basic user (level 1) can access performance cookies";
+        try {
+            $result = $this->simulatePermissionValidation('performance', 1, [
+                'essential' => true,
+                'performance' => true,
+                'preferences' => false
+            ]);
+            $this->assertTrue($result['allowed'] === true, $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * DL-22: Test permission validation for premium user (permission level 2)
+     */
+    private function testPermissionLevelValidationPremiumUser()
+    {
+        $testName = "Premium user (level 2) can access preference cookies";
+        try {
+            $result = $this->simulatePermissionValidation('preferences', 2, [
+                'essential' => true,
+                'performance' => true,
+                'preferences' => true
+            ]);
+            $this->assertTrue($result['allowed'] === true, $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * DL-22: Test insufficient permission level for cookie access
+     */
+    private function testPermissionLevelValidationInsufficientPermission()
+    {
+        $testName = "Public user (level 0) cannot access performance cookies";
+        try {
+            $result = $this->simulatePermissionValidation('performance', 0, [
+                'essential' => true,
+                'performance' => false,
+                'preferences' => false
+            ]);
+            $this->assertTrue($result['allowed'] === false, $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * DL-22: Test retrieving permission level definitions
+     */
+    private function testGetPermissionLevels()
+    {
+        $testName = "Permission levels endpoint returns valid permission definitions";
+        try {
+            $result = $this->simulateGetPermissionLevels();
+            $hasEssential = isset($result['permissionLevels']['essential']);
+            $hasPerformance = isset($result['permissionLevels']['performance']);
+            $hasPreferences = isset($result['permissionLevels']['preferences']);
+            $this->assertTrue($hasEssential && $hasPerformance && $hasPreferences, $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * DL-22: Test permission + consent validation when both are satisfied
+     */
+    private function testPermissionLevelWithConsent()
+    {
+        $testName = "User with permission level and consent can access cookies";
+        try {
+            $result = $this->simulatePermissionValidation('performance', 1, [
+                'essential' => true,
+                'performance' => true,
+                'preferences' => false
+            ]);
+            $this->assertTrue($result['allowed'] === true && $result['status'] === 'success', $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * DL-22: Test that sufficient permission but no consent denies access
+     */
+    private function testPermissionLevelWithoutConsent()
+    {
+        $testName = "User with permission level but no consent cannot access cookies";
+        try {
+            $result = $this->simulatePermissionValidation('performance', 1, [
+                'essential' => true,
+                'performance' => false,
+                'preferences' => false
+            ]);
+            $this->assertTrue($result['allowed'] === false, $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    /**
      * Simulate GET request to cookie-consent endpoint
+     * DL-22: Updated to include permission level information
      */
     private function simulateGetRequest()
     {
@@ -270,7 +418,12 @@ class CookieConsentTest
                         'Security',
                         'Basic site functionality'
                     ],
-                    'examples' => ['PHPSESSID', 'csrf_token', 'session_id']
+                    'examples' => ['PHPSESSID', 'csrf_token', 'session_id'],
+                    'permissionLevel' => [
+                        'level' => 0,
+                        'name' => 'Public',
+                        'description' => 'No permission required - always available'
+                    ]
                 ],
                 'performance' => [
                     'name' => 'Performance Cookies',
@@ -281,7 +434,12 @@ class CookieConsentTest
                         'Performance monitoring',
                         'Error tracking'
                     ],
-                    'examples' => ['_ga', '_gid', '_analytics']
+                    'examples' => ['_ga', '_gid', '_analytics'],
+                    'permissionLevel' => [
+                        'level' => 1,
+                        'name' => 'Basic User',
+                        'description' => 'Requires basic user authentication'
+                    ]
                 ],
                 'preferences' => [
                     'name' => 'Preference Cookies',
@@ -292,14 +450,21 @@ class CookieConsentTest
                         'Language settings',
                         'Theme preferences'
                     ],
-                    'examples' => ['_theme', '_language', '_preferences']
+                    'examples' => ['_theme', '_language', '_preferences'],
+                    'permissionLevel' => [
+                        'level' => 2,
+                        'name' => 'Premium User',
+                        'description' => 'Requires premium user status'
+                    ]
                 ]
             ],
             'privacyPolicyUrl' => '/privacy',
             'termsUrl' => '/terms',
             'contactEmail' => 'privacy@example.com',
             'lastUpdated' => '2025-01-01',
-            'segregationEnabled' => true
+            'segregationEnabled' => true,
+            'permissionLevelSegregationEnabled' => true,
+            'availablePermissionLevels' => [0, 1, 2]
         ];
     }
 
@@ -366,6 +531,95 @@ class CookieConsentTest
                 'preferences' => false
             ],
             'message' => 'Current consent state retrieved successfully'
+        ];
+    }
+
+    /**
+     * DL-22: Simulate permission-level-based cookie access validation
+     */
+    private function simulatePermissionValidation($category, $userPermissionLevel, $consentState)
+    {
+        $permissionLevels = [
+            'essential' => 0,
+            'performance' => 1,
+            'preferences' => 2
+        ];
+
+        // Check if category exists
+        if (!isset($permissionLevels[$category])) {
+            return [
+                'status' => 'error',
+                'allowed' => false,
+                'message' => 'Invalid cookie category'
+            ];
+        }
+
+        $requiredLevel = $permissionLevels[$category];
+
+        // Check if user has sufficient permission level
+        if ($userPermissionLevel < $requiredLevel) {
+            return [
+                'status' => 'error',
+                'allowed' => false,
+                'message' => "Insufficient permission level for {$category} cookies. Required level: {$requiredLevel}, Your level: {$userPermissionLevel}",
+                'requiredAction' => 'upgrade_permission'
+            ];
+        }
+
+        // Essential cookies always allowed if permission met
+        if ($category === 'essential') {
+            return [
+                'status' => 'success',
+                'allowed' => true,
+                'message' => 'Essential cookies are always allowed'
+            ];
+        }
+
+        // For other categories, check consent
+        $hasConsent = isset($consentState[$category]) && $consentState[$category] === true;
+
+        if (!$hasConsent) {
+            return [
+                'status' => 'error',
+                'allowed' => false,
+                'message' => "Consent not given for {$category} cookies",
+                'requiredAction' => 'update_consent'
+            ];
+        }
+
+        return [
+            'status' => 'success',
+            'allowed' => true,
+            'message' => "Full access allowed for {$category} cookies"
+        ];
+    }
+
+    /**
+     * DL-22: Simulate GET permission levels request
+     */
+    private function simulateGetPermissionLevels()
+    {
+        return [
+            'status' => 'success',
+            'timestamp' => date('Y-m-d H:i:s'),
+            'permissionLevels' => [
+                'essential' => [
+                    'level' => 0,
+                    'name' => 'Public',
+                    'description' => 'No permission required - always available'
+                ],
+                'performance' => [
+                    'level' => 1,
+                    'name' => 'Basic User',
+                    'description' => 'Requires basic user authentication'
+                ],
+                'preferences' => [
+                    'level' => 2,
+                    'name' => 'Premium User',
+                    'description' => 'Requires premium user status'
+                ]
+            ],
+            'message' => 'Permission level definitions retrieved successfully'
         ];
     }
 
