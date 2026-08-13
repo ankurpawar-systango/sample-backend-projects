@@ -6,11 +6,13 @@
  * Provides endpoints to get and update cookie preferences
  *
  * DL-1: Added consent-level validation and cookie segregation support
+ * DL-14: Enhanced with comprehensive validation and sync support
  *
  * Features:
  * - Cookie policy information (GET)
  * - Save cookie preferences (POST with action: save)
  * - Validate consent level before cookie operations (POST with action: validate)
+ * - Sync consent state (POST with action: sync)
  * - Returns 403 if user attempts to access cookies above their consent level
  */
 
@@ -20,12 +22,11 @@ header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 
 // DL-5: Start session for persistent consent storage
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// DL-14: Use helper to initialize with consent support
+require_once 'cookie-helper.php';
+initializeSessionWithConsentSupport();
 
-// Valid cookie categories
-define('COOKIE_CATEGORIES', ['essential', 'performance', 'preferences']);
+// Cookie categories are now defined in cookie-helper.php
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -173,6 +174,14 @@ function handlePostRequest() {
         case 'validate':
             handleValidateConsent($data);
             break;
+        case 'sync':
+            // DL-14: New sync action to validate and sync frontend state with backend
+            handleSyncConsent($data);
+            break;
+        case 'report':
+            // DL-14: New action to get detailed consent report
+            handleGetConsentReport($data);
+            break;
         case 'save':
         default:
             handleSavePreferences($data);
@@ -311,22 +320,65 @@ function getConsentStateFromSession() {
 
 /**
  * DL-5: Save consent state to persistent session storage
+ * DL-14: Updated to use helper function
  * @param array $consentData Array with essential, performance, preferences keys
  */
 function saveConsentStateToSession($consentData) {
-    // Validate input
-    if (!is_array($consentData)) {
-        return false;
-    }
+    return updateConsentState($consentData);
+}
 
-    // Store in session with timestamp
-    $_SESSION['cookie_consent'] = [
-        'essential' => $consentData['essential'] ?? true,
-        'performance' => $consentData['performance'] ?? false,
-        'preferences' => $consentData['preferences'] ?? false,
-        'saved_at' => date('Y-m-d H:i:s'),
-        'user_agent' => $consentData['userAgent'] ?? $_SERVER['HTTP_USER_AGENT'] ?? null
+/**
+ * DL-14: Handle sync action to validate frontend and backend consent states
+ * This ensures frontend and backend consent states are synchronized
+ */
+function handleSyncConsent($data) {
+    // Extract client consent state
+    $clientConsent = [
+        'essential' => isset($data['essential']) ? (bool)$data['essential'] : true,
+        'performance' => isset($data['performance']) ? (bool)$data['performance'] : false,
+        'preferences' => isset($data['preferences']) ? (bool)$data['preferences'] : false
     ];
 
-    return true;
+    // Update server state to match client state
+    updateConsentState($clientConsent);
+
+    // Get current server state
+    $serverConsent = getConsentState();
+
+    // Check if they match
+    $isInSync = (
+        $clientConsent['essential'] === $serverConsent['essential'] &&
+        $clientConsent['performance'] === $serverConsent['performance'] &&
+        $clientConsent['preferences'] === $serverConsent['preferences']
+    );
+
+    $response = [
+        'status' => 'success',
+        'message' => $isInSync ? 'Consent states are synchronized' : 'Consent states synchronized',
+        'timestamp' => date('Y-m-d H:i:s'),
+        'client_consent' => $clientConsent,
+        'server_consent' => $serverConsent,
+        'synced' => $isInSync
+    ];
+
+    http_response_code(200);
+    echo json_encode($response, JSON_PRETTY_PRINT);
+}
+
+/**
+ * DL-14: Handle report action to get detailed consent report
+ * Returns comprehensive information about consent state and cookie categories
+ */
+function handleGetConsentReport($data) {
+    $report = getConsentReport();
+
+    $response = [
+        'status' => 'success',
+        'message' => 'Consent report retrieved successfully',
+        'timestamp' => date('Y-m-d H:i:s'),
+        'report' => $report
+    ];
+
+    http_response_code(200);
+    echo json_encode($response, JSON_PRETTY_PRINT);
 }

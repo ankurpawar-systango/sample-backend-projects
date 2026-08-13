@@ -1,5 +1,7 @@
 <?php
-session_start();
+// DL-14: Initialize session with consent support
+require_once dirname(__DIR__) . ‘/../8-about-me/cookie-helper.php’;
+initializeSessionWithConsentSupport();
 
 // Enable CORS for frontend integration
 header(‘Access-Control-Allow-Origin: *’);
