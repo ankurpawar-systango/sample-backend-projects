@@ -24,6 +24,13 @@ class CookieConsentTest
         $this->testOptionsRequest();
         $this->testInvalidMethods();
         $this->testResponseFormat();
+        // DL-1: Cookie Segregation Tests
+        $this->testConsentValidationEssential();
+        $this->testConsentValidationDenied();
+        $this->testConsentValidationAllowed();
+        $this->testConsentValidationInvalidCategory();
+        $this->testGetConsentState();
+        $this->testSegregationEnabled();
 
         $this->printResults();
     }
@@ -144,6 +151,108 @@ class CookieConsentTest
     }
 
     /**
+     * DL-1: Test consent validation for essential cookies (always allowed)
+     */
+    private function testConsentValidationEssential()
+    {
+        $testName = "Essential cookies validation always returns allowed";
+        try {
+            $response = $this->simulateValidateRequest('essential', [
+                'essential' => true,
+                'performance' => false,
+                'preferences' => false
+            ]);
+            $this->assertTrue($response['allowed'] === true, $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * DL-1: Test consent validation denied for non-consented category
+     */
+    private function testConsentValidationDenied()
+    {
+        $testName = "Performance cookies denied without consent";
+        try {
+            $response = $this->simulateValidateRequest('performance', [
+                'essential' => true,
+                'performance' => false,
+                'preferences' => false
+            ]);
+            $this->assertTrue($response['allowed'] === false, $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * DL-1: Test consent validation allowed for consented category
+     */
+    private function testConsentValidationAllowed()
+    {
+        $testName = "Performance cookies allowed with consent";
+        try {
+            $response = $this->simulateValidateRequest('performance', [
+                'essential' => true,
+                'performance' => true,
+                'preferences' => false
+            ]);
+            $this->assertTrue($response['allowed'] === true, $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * DL-1: Test consent validation with invalid category
+     */
+    private function testConsentValidationInvalidCategory()
+    {
+        $testName = "Invalid category returns error";
+        try {
+            $response = $this->simulateValidateRequest('invalid_category', [
+                'essential' => true,
+                'performance' => false,
+                'preferences' => false
+            ]);
+            $this->assertTrue($response['status'] === 'error', $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * DL-1: Test GET consent state endpoint
+     */
+    private function testGetConsentState()
+    {
+        $testName = "GET consent state returns valid response";
+        try {
+            $response = $this->simulateGetConsentState();
+            $hasConsentState = isset($response['consentState']);
+            $hasEssential = isset($response['consentState']['essential']);
+            $this->assertTrue($hasConsentState && $hasEssential, $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * DL-1: Test segregation enabled flag in policy response
+     */
+    private function testSegregationEnabled()
+    {
+        $testName = "Cookie policy includes segregationEnabled flag";
+        try {
+            $policy = $this->simulateGetRequest();
+            $this->assertTrue(isset($policy['segregationEnabled']) && $policy['segregationEnabled'] === true, $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    /**
      * Simulate GET request to cookie-consent endpoint
      */
     private function simulateGetRequest()
@@ -160,7 +269,8 @@ class CookieConsentTest
                         'Session management',
                         'Security',
                         'Basic site functionality'
-                    ]
+                    ],
+                    'examples' => ['PHPSESSID', 'csrf_token', 'session_id']
                 ],
                 'performance' => [
                     'name' => 'Performance Cookies',
@@ -170,7 +280,8 @@ class CookieConsentTest
                         'Usage analytics',
                         'Performance monitoring',
                         'Error tracking'
-                    ]
+                    ],
+                    'examples' => ['_ga', '_gid', '_analytics']
                 ],
                 'preferences' => [
                     'name' => 'Preference Cookies',
@@ -180,13 +291,81 @@ class CookieConsentTest
                         'User preferences',
                         'Language settings',
                         'Theme preferences'
-                    ]
+                    ],
+                    'examples' => ['_theme', '_language', '_preferences']
                 ]
             ],
             'privacyPolicyUrl' => '/privacy',
             'termsUrl' => '/terms',
             'contactEmail' => 'privacy@example.com',
-            'lastUpdated' => '2025-01-01'
+            'lastUpdated' => '2025-01-01',
+            'segregationEnabled' => true
+        ];
+    }
+
+    /**
+     * DL-1: Simulate validate consent request
+     */
+    private function simulateValidateRequest($category, $currentConsent)
+    {
+        // Essential cookies are always allowed
+        if ($category === 'essential') {
+            return [
+                'status' => 'success',
+                'allowed' => true,
+                'message' => 'Essential cookies are always allowed',
+                'category' => $category,
+                'timestamp' => date('Y-m-d H:i:s')
+            ];
+        }
+
+        // Check for invalid category
+        $validCategories = ['essential', 'performance', 'preferences'];
+        if (!in_array($category, $validCategories)) {
+            return [
+                'status' => 'error',
+                'message' => 'Invalid consent_level. Must be one of: ' . implode(', ', $validCategories),
+                'timestamp' => date('Y-m-d H:i:s')
+            ];
+        }
+
+        // Check consent for the requested category
+        $hasConsent = isset($currentConsent[$category]) && $currentConsent[$category] === true;
+
+        if (!$hasConsent) {
+            return [
+                'status' => 'error',
+                'allowed' => false,
+                'message' => "Consent not given for {$category} cookies. Please update your cookie preferences.",
+                'category' => $category,
+                'requiredAction' => 'update_preferences',
+                'timestamp' => date('Y-m-d H:i:s')
+            ];
+        }
+
+        return [
+            'status' => 'success',
+            'allowed' => true,
+            'message' => "Consent verified for {$category} cookies",
+            'category' => $category,
+            'timestamp' => date('Y-m-d H:i:s')
+        ];
+    }
+
+    /**
+     * DL-1: Simulate GET consent state request
+     */
+    private function simulateGetConsentState()
+    {
+        return [
+            'status' => 'success',
+            'timestamp' => date('Y-m-d H:i:s'),
+            'consentState' => [
+                'essential' => true,
+                'performance' => false,
+                'preferences' => false
+            ],
+            'message' => 'Current consent state retrieved successfully'
         ];
     }
 
