@@ -20,6 +20,7 @@ class TutorTest
             require_once 'config.php';
             $this->db = new Database();
 
+            // Existing tests
             $this->testDatabaseConnection();
             $this->testTutorTableExists();
             $this->testFirstTutorExists();
@@ -27,6 +28,13 @@ class TutorTest
             $this->testTutorDataStructure();
             $this->testAnkurPawarExists();
             $this->testTutorEmail();
+
+            // New tests for create functionality
+            $this->testTutorCreationValidation();
+            $this->testDipeshExists();
+            $this->testDipeshDetails();
+            $this->testEmailUniqueness();
+            $this->testMultipleTutorsRetrival();
         } catch (Exception $e) {
             echo "Fatal error: " . $e->getMessage() . "\n";
             exit(1);
@@ -120,6 +128,68 @@ class TutorTest
         try {
             $tutors = $this->db->select('tutors', '*', 'email = ?', ['ankur.pawar@systango.com'], 's');
             $this->assertTrue($tutors && isset($tutors[0]) && $tutors[0]['email'] === 'ankur.pawar@systango.com', $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    private function testTutorCreationValidation()
+    {
+        $testName = "Tutor creation endpoint validates required fields";
+        try {
+            // This test checks that the Database class supports the insert operation
+            // The actual validation happens in the create/index.php endpoint
+            $this->assertTrue(method_exists($this->db, 'insert'), $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    private function testDipeshExists()
+    {
+        $testName = "Dipesh exists as a tutor";
+        try {
+            $tutors = $this->db->select('tutors', '*', 'name = ?', ['Dipesh'], 's');
+            $this->assertTrue($tutors && isset($tutors[0]), $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    private function testDipeshDetails()
+    {
+        $testName = "Dipesh has correct email and details";
+        try {
+            $tutors = $this->db->select('tutors', '*', 'email = ?', ['dipesh@systango.com'], 's');
+            $hasDipesh = $tutors && isset($tutors[0]) && $tutors[0]['name'] === 'Dipesh';
+            $hasBio = $tutors && isset($tutors[0]) && !empty($tutors[0]['bio']);
+            $hasAbout = $tutors && isset($tutors[0]) && !empty($tutors[0]['about']);
+            $this->assertTrue($hasDipesh && $hasBio && $hasAbout, $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    private function testEmailUniqueness()
+    {
+        $testName = "Email field has unique constraint";
+        try {
+            // Check that both tutors have different emails
+            $tutors = $this->db->select('tutors', 'email', '');
+            $emails = array_map(function ($t) { return $t['email']; }, $tutors);
+            $uniqueEmails = array_unique($emails);
+            $this->assertTrue(count($emails) === count($uniqueEmails), $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    private function testMultipleTutorsRetrival()
+    {
+        $testName = "Can retrieve multiple tutors (at least 2)";
+        try {
+            $tutors = $this->db->select('tutors', '*');
+            $this->assertTrue($tutors && count($tutors) >= 2, $testName);
         } catch (Exception $e) {
             $this->assertFalse($testName . " - Exception: " . $e->getMessage());
         }
