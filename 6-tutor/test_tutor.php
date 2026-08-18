@@ -27,6 +27,10 @@ class TutorTest
             $this->testTutorDataStructure();
             $this->testAnkurPawarExists();
             $this->testTutorEmail();
+            $this->testAvinashExists();
+            $this->testAvinashEmail();
+            $this->testAvinashIsNotFirstTutor();
+            $this->testMultipleTutorsExist();
         } catch (Exception $e) {
             echo "Fatal error: " . $e->getMessage() . "\n";
             exit(1);
@@ -120,6 +124,50 @@ class TutorTest
         try {
             $tutors = $this->db->select('tutors', '*', 'email = ?', ['ankur.pawar@systango.com'], 's');
             $this->assertTrue($tutors && isset($tutors[0]) && $tutors[0]['email'] === 'ankur.pawar@systango.com', $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    private function testAvinashExists()
+    {
+        $testName = "Avinash tutor exists in database";
+        try {
+            $tutors = $this->db->select('tutors', '*', 'name LIKE ?', ['%Avinash%'], 's');
+            $this->assertTrue($tutors && isset($tutors[0]), $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    private function testAvinashEmail()
+    {
+        $testName = "Avinash email is correct (avinash@systango.com)";
+        try {
+            $tutors = $this->db->select('tutors', '*', 'email = ?', ['avinash@systango.com'], 's');
+            $this->assertTrue($tutors && isset($tutors[0]) && $tutors[0]['email'] === 'avinash@systango.com', $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    private function testAvinashIsNotFirstTutor()
+    {
+        $testName = "Avinash is not marked as first tutor";
+        try {
+            $tutors = $this->db->select('tutors', '*', 'name = ? AND is_first_tutor = ?', ['Avinash', 0], 'si');
+            $this->assertTrue($tutors && isset($tutors[0]), $testName);
+        } catch (Exception $e) {
+            $this->assertFalse($testName . " - Exception: " . $e->getMessage());
+        }
+    }
+
+    private function testMultipleTutorsExist()
+    {
+        $testName = "At least 2 tutors exist in database";
+        try {
+            $tutors = $this->db->select('tutors', '*');
+            $this->assertTrue($tutors && count($tutors) >= 2, $testName);
         } catch (Exception $e) {
             $this->assertFalse($testName . " - Exception: " . $e->getMessage());
         }

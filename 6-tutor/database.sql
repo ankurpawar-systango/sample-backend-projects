@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS tutors (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Insert the first tutor
+-- Insert tutors
 INSERT INTO tutors (name, email, bio, about, is_first_tutor) VALUES
-('Ankur Pawar', 'ankur.pawar@systango.com', 'Experienced tutor with passion for education', 'A dedicated educator with expertise in various subjects. The very first tutor on this platform.', TRUE);
+('Ankur Pawar', 'ankur.pawar@systango.com', 'Experienced tutor with passion for education', 'A dedicated educator with expertise in various subjects. The very first tutor on this platform.', TRUE),
+('Avinash', 'avinash@systango.com', 'Expert in web development and programming', 'A passionate developer and educator with 8+ years of experience in web technologies. Specializes in full-stack development.', FALSE);
