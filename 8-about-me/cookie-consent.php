@@ -6,12 +6,15 @@
  * Provides endpoints to get and update cookie preferences
  *
  * DL-1: Added consent-level validation and cookie segregation support
+ * DL-27: Enhanced server-side enforcement and session-based consent persistence
  *
  * Features:
  * - Cookie policy information (GET)
  * - Save cookie preferences (POST with action: save)
  * - Validate consent level before cookie operations (POST with action: validate)
  * - Returns 403 if user attempts to access cookies above their consent level
+ * - Persistent server-side consent state in PHP session
+ * - Synchronized with frontend consent preferences
  */
 
 header('Content-Type: application/json');
