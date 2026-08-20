@@ -75,6 +75,15 @@ curl http://localhost:8000/health
 
 For more details and other endpoints, see [`9-fastapi-template/README.md`](9-fastapi-template/README.md).
 
+### Server Unavailability & Error Handling
+
+When the server is down or unavailable, attempting to access the `/health` endpoint will result in an **HTTP 500 error**. This indicates that the service is not operational and cannot process the health check request.
+
+**Expected behavior by server state:**
+
+- **Server is healthy and running:** `GET /health` returns **HTTP 200** with status information
+- **Server is down or unavailable:** `GET /health` returns **HTTP 500** (Internal Server Error)
+
 ### Testing the Health Endpoints
 
 You can verify the health status using any HTTP client:
@@ -87,7 +96,7 @@ curl -i http://localhost/sample-backend-projects/7-health/health.php
 curl -i http://localhost:8000/health
 ```
 
-Both endpoints return HTTP 200 (OK) when the service is healthy and operational.
+Both endpoints return HTTP 200 (OK) when the service is healthy and operational. If the server is down or unavailable, the request will fail with an HTTP 500 error, indicating the service is not accessible.
 
 ## 📜 License
 This project is open-source and available under the **MIT License**.
