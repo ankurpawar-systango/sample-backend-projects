@@ -8,6 +8,87 @@
 ![PHP](https://img.shields.io/badge/PHP-%23777BB4.svg?style=for-the-badge&logo=php&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-%234479A1.svg?style=for-the-badge&logo=mysql&logoColor=white)
 
+## 🏥 Health Check
+
+The backend includes health check endpoints to monitor service status and availability.
+
+### Endpoint Overview
+
+**GET /health** — Returns HTTP 200 status code when the service is operational.
+
+### Response Format
+
+Both the PHP and FastAPI implementations return health status information:
+
+```json
+{
+  "status": "healthy",
+  "message": "Backend service is running",
+  "timestamp": "2024-01-15 10:30:45",
+  "responseTime": "1.25 ms"
+}
+```
+
+### PHP Implementation
+
+**Location:** `7-health/health.php`
+
+The PHP health check endpoint returns comprehensive health status information including PHP version and uptime details.
+
+**Example curl command:**
+```bash
+curl http://localhost/sample-backend-projects/7-health/health.php
+```
+
+**Response example:**
+```json
+{
+  "status": "healthy",
+  "message": "Backend service is running",
+  "timestamp": "2024-01-15 10:30:45",
+  "responseTime": "1.25 ms",
+  "php_version": "7.4.3",
+  "uptime": "Service is operational"
+}
+```
+
+For more details, see [`7-health/README.md`](7-health/README.md).
+
+### FastAPI Implementation
+
+**Location:** `9-fastapi-template/main.py` (lines 63-66)
+
+The FastAPI health check endpoint is a lightweight endpoint that returns health status.
+
+**Example curl command:**
+```bash
+curl http://localhost:8000/health
+```
+
+**Response example:**
+```json
+{
+  "status": "healthy",
+  "service": "FastAPI Starter Template"
+}
+```
+
+For more details and other endpoints, see [`9-fastapi-template/README.md`](9-fastapi-template/README.md).
+
+### Testing the Health Endpoints
+
+You can verify the health status using any HTTP client:
+
+```bash
+# Test the PHP health endpoint
+curl -i http://localhost/sample-backend-projects/7-health/health.php
+
+# Test the FastAPI health endpoint (assuming it runs on port 8000)
+curl -i http://localhost:8000/health
+```
+
+Both endpoints return HTTP 200 (OK) when the service is healthy and operational.
+
 ## 📜 License
 This project is open-source and available under the **MIT License**.
 
