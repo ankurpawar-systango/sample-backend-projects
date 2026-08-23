@@ -12,6 +12,8 @@
 
 The backend includes health check endpoints to monitor service status and availability.
 
+**Verification Tag:** `e2e-1787489599`
+
 ### Endpoint Overview
 
 **GET /health** — Returns HTTP 200 status code when the service is operational.
