@@ -59,7 +59,7 @@ The application will start on `http://localhost:8000`
 ### GET Endpoints
 
 - **`GET /`** - Welcome message with API overview
-- **`GET /health`** - Health check endpoint
+- **`GET /health`** - Health check endpoint (returns `{"status": "ok"}`)
 - **`GET /items`** - Retrieve all items
 - **`GET /items/{item_id}`** - Retrieve a specific item by ID
 
