@@ -65,6 +65,12 @@ async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "FastAPI Starter Template"}
 
+# Ping endpoint
+@app.get("/api/ping")
+async def ping():
+    """Ping health check endpoint"""
+    return {"pong": True}
+
 # GET endpoint - Retrieve all items
 @app.get("/items", response_model=List[Item])
 async def get_items():
