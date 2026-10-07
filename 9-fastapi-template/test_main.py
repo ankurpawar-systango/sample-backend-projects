@@ -31,6 +31,13 @@ class TestRootEndpoints:
         assert data["status"] == "healthy"
         assert "service" in data
 
+    def test_version_endpoint(self):
+        """Test the version endpoint"""
+        response = client.get("/api/version")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["version"] == "1.0.0"
+
 
 class TestGetEndpoints:
     """Test GET endpoints"""
