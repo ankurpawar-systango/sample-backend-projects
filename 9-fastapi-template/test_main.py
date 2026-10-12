@@ -59,6 +59,12 @@ class TestGetEndpoints:
         data = response.json()
         assert data["detail"] == "Item not found"
 
+    def test_get_app_info(self):
+        """Test retrieving app info"""
+        response = client.get("/api/info")
+        assert response.status_code == 200
+        assert response.json() == {"app": "fullstack-demo"}
+
 
 class TestPostEndpoints:
     """Test POST endpoints"""

@@ -65,6 +65,12 @@ async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "FastAPI Starter Template"}
 
+# App info endpoint
+@app.get("/api/info")
+async def get_app_info():
+    """Get application info"""
+    return {"app": "fullstack-demo"}
+
 # GET endpoint - Retrieve all items
 @app.get("/items", response_model=List[Item])
 async def get_items():
