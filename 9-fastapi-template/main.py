@@ -63,7 +63,7 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy", "service": "FastAPI Starter Template"}
+    return {"status": "ok"}
 
 # GET endpoint - Retrieve all items
 @app.get("/items", response_model=List[Item])
