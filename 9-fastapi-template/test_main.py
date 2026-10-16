@@ -31,6 +31,12 @@ class TestRootEndpoints:
         assert data["status"] == "healthy"
         assert "service" in data
 
+    def test_ping(self):
+        """Test the ping endpoint"""
+        response = client.get("/api/ping")
+        assert response.status_code == 200
+        assert response.json() == {"pong": True}
+
     def test_version_endpoint(self):
         """Test the version endpoint"""
         response = client.get("/api/version")
