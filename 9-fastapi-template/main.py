@@ -52,6 +52,8 @@ async def root():
         "endpoints": {
             "GET /": "This welcome message",
             "GET /health": "Health check endpoint",
+            "GET /api/ping": "Ping endpoint",
+            "GET /api/version": "Get application version",
             "GET /items": "Get all items",
             "GET /items/{item_id}": "Get specific item by ID",
             "POST /items": "Create a new item",
@@ -59,11 +61,23 @@ async def root():
         }
     }
 
+# Ping endpoint
+@app.get("/api/ping")
+async def ping():
+    """Ping endpoint"""
+    return {"pong": True}
+
 # Health check endpoint
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "FastAPI Starter Template"}
+
+# Version endpoint
+@app.get("/api/version")
+async def get_version():
+    """Get application version"""
+    return {"version": "1.0.0"}
 
 # GET endpoint - Retrieve all items
 @app.get("/items", response_model=List[Item])
