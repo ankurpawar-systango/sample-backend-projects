@@ -70,7 +70,7 @@ async def health_check():
 # Ping endpoint
 @app.get("/api/ping")
 async def ping():
-    """Health check ping endpoint"""
+    """Liveness probe for load balancers."""
     return {"pong": True}
 
 # Version endpoint
