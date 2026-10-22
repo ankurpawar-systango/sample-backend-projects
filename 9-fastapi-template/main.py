@@ -52,6 +52,7 @@ async def root():
         "endpoints": {
             "GET /": "This welcome message",
             "GET /health": "Health check endpoint",
+            "GET /api/ping": "Ping endpoint",
             "GET /api/version": "Get application version",
             "GET /items": "Get all items",
             "GET /items/{item_id}": "Get specific item by ID",
@@ -59,6 +60,12 @@ async def root():
             "POST /greet": "Send a greeting message"
         }
     }
+
+# Ping endpoint
+@app.get("/api/ping")
+async def ping():
+    """Ping endpoint"""
+    return {"pong": True}
 
 # Health check endpoint
 @app.get("/health")
